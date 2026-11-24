@@ -7,6 +7,9 @@ READ = "read_log"
 INSPECT = "inspect_request"
 RETRY = "retry_request"
 PATCH = "patch_code"
+REPEAT_CRASH = "repeat_crash"
+DOUBLE_STAMP = "double_stamp"
+STACK_SURGE = "stack_surge"
 
 LABELS = {
     READ: "Read Log",
@@ -14,6 +17,20 @@ LABELS = {
     RETRY: "Retry Request",
     PATCH: "Patch Code",
 }
+COUNTER_LABELS = {
+    REPEAT_CRASH: "Repeat Crash",
+    DOUBLE_STAMP: "Double Stamp",
+    STACK_SURGE: "Stack Surge",
+}
+
+
+@dataclass(frozen=True)
+class Receipt:
+    order_id: int
+    request_id: str
+
+
+ECHO_RECEIPTS = (Receipt(311, "ord-74"), Receipt(312, "ord-74"))
 
 
 @dataclass(frozen=True)
@@ -31,9 +48,15 @@ class Case:
     title: str
     objective: str
     symptom: str
-    disruption: str
+    counter: str
     steps: tuple[Step, ...]
     reward: tuple[str, ...]
+    opening_receipts: tuple[Receipt, ...] = ()
+
+    def move_label(self, move: str) -> str:
+        if self.opening_receipts and move == INSPECT:
+            return "Compare Receipts"
+        return LABELS[move]
 
 
 CASES = (
@@ -42,7 +65,7 @@ CASES = (
         "Crash Loop",
         "Locate the failing line.",
         "The cart goes blank as soon as you open it.",
-        "Repeat Crash added another copy of the exception.",
+        REPEAT_CRASH,
         (
             Step(
                 READ,
@@ -61,18 +84,19 @@ CASES = (
     Case(
         "aardart",
         "Echo Order",
-        "Account for the original order.",
-        "Checkout timed out. The order might already be saved.",
-        "Repeat Click added another timeout to the browser log.",
+        "Find the original order.",
+        "You pressed Checkout once. The response timed out.",
+        DOUBLE_STAMP,
         (
             Step(
                 INSPECT,
                 "POST /orders: response timed out (request ord-74).\n"
-                "The browser cannot tell whether the server saved the order.",
+                "Orders #311 and #312 both have attempt ID ord-74.",
             ),
             Step(
                 READ,
                 "ord-74: INSERT committed, order #311.\n"
+                "ord-74: second INSERT committed, order #312.\n"
                 "ord-74: confirmation response timed out.\n"
                 "What should the app do with the original attempt?",
                 (
@@ -80,18 +104,19 @@ CASES = (
                     "Submit a fresh order",
                     "Clear browser cache",
                 ),
-                explanation="The log says the order was committed. Looking up #311 "
-                "recovers the result without submitting a second order.",
+                explanation="Found order #311 using the original attempt. "
+                "The lookup created zero new orders.",
             ),
         ),
         (PATCH,),
+        ECHO_RECEIPTS,
     ),
     Case(
         "ampystoma",
         "Checkout Blackout",
         "Diagnose, repair, and verify checkout.",
         "Checkout returns an error after a coupon is removed.",
-        "Stack Surge raised the failed checkout counter.",
+        STACK_SURGE,
         (
             Step(INSPECT, "POST /checkout returned 500. Request ID: cart-19."),
             Step(
@@ -117,8 +142,8 @@ CASES = (
                     "Treat a missing coupon as zero discount",
                 ),
                 2,
-                "The patch handles the missing coupon. Retry the request to "
-                "check the order and total.",
+                "total.js:18 now reads coupon?.amount ?? 0.\n"
+                "Retry to check the order and total.",
             ),
             Step(
                 RETRY,
@@ -138,9 +163,21 @@ class Encounter:
     revealed: int = 0
     turns: int = 0
     drops: int = 0
-    duplicates: int = 0
+    retries: tuple[Receipt, ...] = ()
     pending: bool = False
     message: str = ""
+
+    @property
+    def receipts(self) -> tuple[Receipt, ...]:
+        return self.case.opening_receipts + self.retries
+
+    @property
+    def duplicates(self) -> int:
+        return max(0, len(self.receipts) - 1)
+
+    @property
+    def crash_count(self) -> int:
+        return 1 + self.drops if self.case.counter == REPEAT_CRASH else 0
 
     @property
     def solved(self) -> bool:
@@ -167,12 +204,15 @@ class Encounter:
             else:
                 self.advance()
             return
-        if move == RETRY and self.case == CASES[1]:
-            self.duplicates += 1
-            self.message = "Retry created a duplicate order. The first order was already saved."
+        if move == RETRY and self.case.opening_receipts:
+            self.add_retry_receipt()
         elif move == RETRY:
             self.message = (
                 "Checkout failed again. The underlying error is still present."
+            )
+        elif self.case.opening_receipts and not self.revealed:
+            self.message = (
+                "Match the receipts to a request before opening the log."
             )
         else:
             self.message = "No new evidence yet. Follow the clue from the last useful step."
@@ -185,10 +225,21 @@ class Encounter:
         if index == self.step.answer:
             self.message = self.step.explanation or "Diagnosis accepted."
             self.progress += 1
+        elif self.case.opening_receipts and index == 1:
+            self.add_retry_receipt()
+            self.disrupt()
         else:
             self.message = (
                 "That choice does not match the evidence. Inspect it again."
             )
+
+    def add_retry_receipt(self) -> None:
+        order = self.receipts[-1].order_id + 1
+        request = 75 + len(self.retries)
+        self.retries += (Receipt(order, f"ord-{request}"),)
+        self.message = (
+            f"A fresh POST saved another copy of this cart as order #{order}."
+        )
 
     def advance(self) -> None:
         self.progress += 1

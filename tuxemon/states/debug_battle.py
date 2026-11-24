@@ -4,25 +4,34 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from functools import partial
-from math import sin
+from math import pi, sin
 
 import pygame
 
 from tuxemon.core.effects.capture import register_capture
+from tuxemon.debugging.audio import CUES, BattleAudio
+from tuxemon.debugging.backpack import BattleBackpack, companion_identity
 from tuxemon.debugging.cases import (
     CASES,
+    COUNTER_LABELS,
+    DOUBLE_STAMP,
     INSPECT,
     LABELS,
     PATCH,
     READ,
+    REPEAT_CRASH,
     RETRY,
+    STACK_SURGE,
     Encounter,
 )
 from tuxemon.debugging.visuals import (
     draw_capture,
     draw_crash_echo,
+    draw_fault_stack,
     draw_move,
     draw_read_log,
+    draw_receipts,
+    draw_stack_surge,
     read_log_offsets,
 )
 from tuxemon.graphics import load_image
@@ -34,24 +43,16 @@ from tuxemon.state.state import State
 from tuxemon.technique.technique import Technique
 
 SIZE = (960, 540)
-READ_LOG_CUES = (
-    (0.14, "sfx_pulse"),
-    (0.44, "sfx_machine_beep"),
-    (0.77, "sfx_shine"),
-)
-CRASH_ECHO_DURATION = 0.38
-CAPTURE_CUES = (
-    (0.08, "sfx_shpring"),
-    (0.69, "sfx_bounce"),
-    (0.98, "sfx_shine"),
-)
+ECHO_WINDUP = 0.34
+MOVE_DURATION = {READ: 0.90, INSPECT: 0.56, RETRY: 0.66, PATCH: 0.55}
+COUNTER_DURATION = {REPEAT_CRASH: 0.43, DOUBLE_STAMP: 0.72, STACK_SURGE: 0.48}
 
 
 @dataclass
 class BattleEffect:
     name: str
     duration: float
-    complete: Callable[[], None]
+    complete: Callable[[], None] | None
     elapsed: float = 0.0
     cues: tuple[tuple[float, str], ...] = ()
 
@@ -70,16 +71,17 @@ class DebugBattleState(State):
         self.case = CASES[index]
         self.fight = Encounter(self.case, message=self.case.symptom)
         self.target = Monster.spawn_base(self.case.monster, 5 + index)
+        self.target.name = self.case.title
         self.target.wild = True
         self.session.player.tuxepedia.register_seen(self.target.slug)
         self.party = list(session.player.monsters)
         self.active = 0
         self.selected = 0
         self.caught = False
-        self.park_mix: tuple[str | None, float] | None = None
+        self.audio = BattleAudio(client.current_music, client.sound_manager)
+        self.entered = False
         self.effect: BattleEffect | None = None
         self.elapsed = 0.0
-        self.disruption_time = 0.0
         self.trace_revealed_at: float | None = None
         self.feedback = ""
         self.feedback_is_warning = False
@@ -94,41 +96,45 @@ class DebugBattleState(State):
         self.font = pygame.font.Font(None, 26)
         self.heading = pygame.font.Font(None, 48)
         self.small = pygame.font.Font(None, 21)
+        self.tiny = pygame.font.Font(None, 17)
         self.target_image = self.sprite(self.target, "front")
         self.party_images = [
             self.sprite(monster, "back") for monster in self.party
         ]
+        self.backpack = BattleBackpack(
+            self.party,
+            [self.sprite(monster, "front") for monster in self.party],
+            case=self.case,
+        )
 
     def resume(self) -> None:
         super().resume()
-        if self.park_mix is None:
-            music = self.client.current_music
-            self.park_mix = (
-                music.current_song,
-                music.get_volume(ignore_mute=True),
-            )
-            music.play(
-                "music_battle_loop_slow",
-                volume=0.72 * self.park_mix[1],
-                fade_ms=250,
-            )
-            self.client.sound_manager.play("sfx_pulse")
+        if self.entered:
+            return
+        self.entered = True
+        self.audio.enter()
+        if self.case.opening_receipts:
+            self.play_counter(DOUBLE_STAMP)
 
     def shutdown(self) -> None:
-        if self.park_mix is not None:
-            track, volume = self.park_mix
-            music = self.client.current_music
-            if track:
-                music.play(track, volume=volume, fade_ms=300)
-            else:
-                music.stop()
+        self.audio.leave()
         super().shutdown()
+
+    def play_counter(self, counter: str) -> None:
+        windup = ECHO_WINDUP if counter == DOUBLE_STAMP else 0.0
+        self.play_effect(
+            counter,
+            COUNTER_DURATION[counter] + windup,
+            cues=tuple(
+                (time + windup, sound) for time, sound in CUES[counter]
+            ),
+        )
 
     def play_effect(
         self,
         name: str,
         duration: float,
-        complete: Callable[[], None],
+        complete: Callable[[], None] | None = None,
         *,
         cues: tuple[tuple[float, str], ...] = (),
     ) -> None:
@@ -137,7 +143,6 @@ class DebugBattleState(State):
     def update(self, dt: float) -> None:
         super().update(dt)
         self.elapsed += dt
-        self.disruption_time = max(0.0, self.disruption_time - dt)
         effect = self.effect
         if effect is not None:
             previous = effect.elapsed
@@ -147,7 +152,8 @@ class DebugBattleState(State):
                     self.client.sound_manager.play(sound)
             if effect.progress == 1.0:
                 self.effect = None
-                effect.complete()
+                if effect.complete is not None:
+                    effect.complete()
 
     @staticmethod
     def sprite(monster, side):
@@ -178,12 +184,15 @@ class DebugBattleState(State):
             return self.fight.step.options
         if self.fight.solved:
             return ("Throw Tuxeball",)
-        return tuple(LABELS[move] for move in self.moves)
+        return tuple(self.case.move_label(move) for move in self.moves)
 
     def process_event(self, event):
         if not event.pressed:
             return event
         if self.effect is not None:
+            return None
+        if self.backpack.is_open:
+            self.process_backpack(event.button)
             return None
         if event.button in (buttons.UP, buttons.DOWN):
             delta = -1 if event.button == buttons.UP else 1
@@ -191,69 +200,70 @@ class DebugBattleState(State):
             if selected != self.selected:
                 self.client.sound_manager.play("sound_menu_select")
             self.selected = selected
-        elif event.button in (buttons.LEFT, buttons.RIGHT):
+        elif event.button in (buttons.LEFT, buttons.RIGHT, buttons.X):
             if not self.fight.pending and not self.fight.solved:
-                delta = -1 if event.button == buttons.LEFT else 1
-                active = (self.active + delta) % len(self.party)
-                if active != self.active:
-                    self.client.sound_manager.play("sound_menu_select")
-                self.active = active
-                self.selected = 0
+                self.backpack.open(self.active)
+                self.client.sound_manager.play("sound_menu_select")
         elif event.button == buttons.A:
             if self.caught:
                 self.client.pop_state(self)
                 return None
             if self.fight.solved:
                 self.play_effect(
-                    "capture", 1.15, self.capture, cues=CAPTURE_CUES
+                    "capture", 1.15, self.capture, cues=CUES["capture"]
                 )
             elif self.fight.pending:
                 self.answer(self.selected)
             else:
                 move = self.moves[self.selected]
-                if move == PATCH:
-                    self.apply_move(move)
-                elif move == READ:
-                    self.play_effect(
-                        READ,
-                        0.94,
-                        partial(self.apply_move, READ),
-                        cues=READ_LOG_CUES,
-                    )
-                else:
-                    duration = 0.64 if move == RETRY else 0.52
-                    self.play_effect(
-                        move,
-                        duration,
-                        partial(self.apply_move, move),
-                        cues=(
-                            (0.12, "sfx_pulse"),
-                            (duration - 0.12, "sfx_machine_beep"),
-                        ),
-                    )
+                self.play_effect(
+                    move,
+                    MOVE_DURATION[move],
+                    partial(self.apply_move, move),
+                    cues=CUES[move],
+                )
             self.selected = 0
         return None
 
+    def process_backpack(self, button: int) -> None:
+        if button in (buttons.B, buttons.BACK, buttons.X):
+            self.backpack.close()
+        elif button in (buttons.UP, buttons.DOWN, buttons.LEFT, buttons.RIGHT):
+            delta = -1 if button in (buttons.UP, buttons.LEFT) else 1
+            previous = self.backpack.selected
+            self.backpack.select(delta)
+            if self.backpack.selected != previous:
+                self.client.sound_manager.play("sound_menu_select")
+        elif button == buttons.A:
+            chosen = self.backpack.selected
+            self.backpack.close()
+            if chosen != self.active:
+                self.active = chosen
+                self.selected = 0
+                self.play_effect("switch", 0.30, cues=CUES["switch"])
+
     def apply_move(self, move: str) -> None:
         before = self.fight.drops
+        receipts = len(self.fight.receipts)
         expected = self.fight.step.move
         self.fight.use(move, set(self.moves))
         self.feedback_is_warning = move != expected
         self.feedback = self.fight.message if self.feedback_is_warning else ""
-        if move == READ and not self.feedback_is_warning:
+        if not self.feedback_is_warning and move in (READ, INSPECT):
             self.trace_revealed_at = self.elapsed
-        if self.fight.drops > before:
-            self.disruption_time = CRASH_ECHO_DURATION
-            self.client.sound_manager.play("sfx_zap")
+        if len(self.fight.receipts) > receipts:
+            self.play_retry_receipt()
+        elif self.fight.drops > before and self.case.counter != DOUBLE_STAMP:
+            self.play_counter(self.case.counter)
 
     def answer(self, index: int) -> None:
         step = self.fight.step
         if step.move == PATCH and index == step.answer:
             self.play_effect(
                 PATCH,
-                0.5,
+                MOVE_DURATION[PATCH],
                 partial(self.apply_answer, index),
-                cues=((0.32, "sfx_shine"),),
+                cues=CUES[PATCH],
             )
         else:
             self.client.sound_manager.play(
@@ -262,9 +272,17 @@ class DebugBattleState(State):
             self.apply_answer(index)
 
     def apply_answer(self, index: int) -> None:
+        receipts = len(self.fight.receipts)
         self.feedback_is_warning = index != self.fight.step.answer
         self.fight.answer(index)
         self.feedback = self.fight.message
+        if len(self.fight.receipts) > receipts:
+            self.play_retry_receipt()
+
+    def play_retry_receipt(self) -> None:
+        self.play_effect(
+            "retry_receipt", 0.42, cues=((0.22, CUES[DOUBLE_STAMP][0][1]),)
+        )
 
     def capture(self):
         # Case resolution guarantees a capture, so a random roll cannot gate
@@ -277,6 +295,7 @@ class DebugBattleState(State):
             "debug_cases_cleared", self.index + 1
         )
         self.caught = True
+        self.audio.reward()
         self.selected = 0
         reward = " and ".join(LABELS[move] for move in self.case.reward)
         self.feedback = (
@@ -339,8 +358,7 @@ class DebugBattleState(State):
             self.small,
             "#9cddb5",
         )
-        self.text(self.case.title, (28, 39), self.heading)
-        self.text(self.case.objective, (446, 53))
+        self.text(self.case.objective, (28, 39), self.heading)
         opponent = self.target_image
         ally = self.party_images[self.active]
         entry = max(0.0, 1 - self.elapsed / 0.34) ** 2
@@ -360,8 +378,20 @@ class DebugBattleState(State):
             ally_offset, target_offset = read_log_offsets(self.effect.progress)
             ally_rect.x += ally_offset
             target_rect.x += target_offset
-        if self.disruption_time:
-            target_rect.x += round(5 * sin(70 * self.disruption_time))
+        if self.effect:
+            progress = self.effect.progress
+            if self.effect.name == REPEAT_CRASH:
+                target_rect.x -= round(17 * abs(sin(2 * pi * progress)))
+            elif self.effect.name == DOUBLE_STAMP:
+                for hit, _ in self.effect.cues:
+                    lead = hit - self.effect.elapsed
+                    target_rect.y -= round(
+                        23 * sin(pi * min(1.0, max(0.0, lead / 0.17)))
+                    )
+            elif self.effect.name == STACK_SURGE:
+                target_rect.y -= round(19 * sin(pi * progress))
+            elif self.effect.name == "switch":
+                ally_rect.x -= round(131 * (1 - progress) ** 2)
         if self.effect and self.effect.name == "capture":
             vanish = max(0.05, min(1.0, (1 - self.effect.progress) / 0.34))
             opponent = pygame.transform.scale_by(opponent, vanish)
@@ -369,24 +399,23 @@ class DebugBattleState(State):
         if not self.caught:
             canvas.blit(opponent, target_rect)
         canvas.blit(ally, ally_rect)
-        if self.disruption_time and not self.caught:
-            progress = 1.0 - self.disruption_time / CRASH_ECHO_DURATION
-            draw_crash_echo(canvas, progress, target_rect)
-        if self.effect:
-            if self.effect.name == "capture":
-                draw_capture(canvas, self.effect.progress)
-            elif self.effect.name == READ:
-                draw_read_log(
-                    canvas, self.effect.progress, ally_rect, target_rect
-                )
-            else:
-                draw_move(canvas, self.effect.name, self.effect.progress)
-        self.text(self.party[self.active].name, (35, 101))
+        self.draw_arena_effects(ally_rect, target_rect)
+        ally_monster = self.party[self.active]
+        self.text(ally_monster.name, (35, 101))
         self.text(
-            f"Caught {self.target.name}"
-            if self.caught
-            else f"Wild {self.target.name}",
-            (614, 100),
+            companion_identity(ally_monster.slug).role,
+            (35, 126),
+            self.small,
+            "#9cddb5",
+        )
+        name = f"{'Caught' if self.caught else 'Wild'} {self.target.name}"
+        role = companion_identity(self.target.slug).role
+        self.text(name, (932 - self.font.size(name)[0], 17))
+        self.text(
+            role,
+            (932 - self.small.size(role)[0], 44),
+            self.small,
+            "#9cddb5",
         )
         pygame.draw.rect(
             canvas, "#162b2a", (23, 292, 590, 208), border_radius=10
@@ -407,6 +436,13 @@ class DebugBattleState(State):
 
         caption = "EVIDENCE" if self.fight.turns else "SYMPTOM"
         self.text(caption, (41, 305), self.small, "#9cddb5")
+        if self.fight.crash_count > 1:
+            self.text(
+                f"TypeError ×{self.fight.crash_count}",
+                (454, 305),
+                self.small,
+                "#f8bd80",
+            )
         lines = self.wrapped_lines(self.evidence_for_panel(), 550)
         for index, line in enumerate(lines):
             self.text(line, (41, 331 + index * 19), self.small)
@@ -421,22 +457,8 @@ class DebugBattleState(State):
                     self.small,
                     "#f8bd80" if self.feedback_is_warning else "#9cddb5",
                 )
-        if self.fight.drops and not self.fight.solved:
-            self.text(self.case.disruption, (35, 262), self.small, "#f8bd80")
-        if self.fight.duplicates:
-            self.text(
-                f"Duplicate orders: {self.fight.duplicates}",
-                (681, 258),
-                self.small,
-                "#f8bd80",
-            )
-
         if self.effect:
-            title = (
-                "THROWING TUXEBALL"
-                if self.effect.name == "capture"
-                else LABELS[self.effect.name].upper()
-            )
+            title = self.effect_title()
         elif self.fight.pending:
             title = "CHOOSE AN ANSWER"
         elif self.caught:
@@ -465,11 +487,78 @@ class DebugBattleState(State):
         elif self.fight.pending:
             controls = "Up / Down  Select     Enter  Answer"
         else:
-            controls = "Up / Down  Select     Enter  Confirm     Left / Right  Switch Tuxemon"
+            controls = "Up / Down  Select     Enter  Confirm     Left / Right  Backpack"
         self.text(controls, (28, 511), self.small)
         self.text(
             f"Turn {self.fight.turns}   |   Disruptions {self.fight.drops}",
             (740, 511),
             self.small,
         )
+        if self.backpack.is_open:
+            self.backpack.draw(canvas, self.font, self.small)
         pygame.transform.scale(canvas, surface.get_size(), surface)
+
+    def effect_title(self) -> str:
+        assert self.effect is not None
+        name = self.effect.name
+        if name in LABELS:
+            return self.case.move_label(name).upper()
+        if name in COUNTER_LABELS:
+            return COUNTER_LABELS[name].upper()
+        return {
+            "capture": "THROWING TUXEBALL",
+            "switch": f"GO, {self.party[self.active].name.upper()}!",
+            "retry_receipt": "ANOTHER ORDER",
+        }[name]
+
+    def draw_arena_effects(
+        self, ally: pygame.Rect, target: pygame.Rect
+    ) -> None:
+        effect = self.effect
+        if self.case.opening_receipts:
+            stamp_time = (
+                effect.elapsed - ECHO_WINDUP
+                if effect and effect.name == DOUBLE_STAMP
+                else None
+            )
+            retry_progress = (
+                effect.progress
+                if effect and effect.name == "retry_receipt"
+                else None
+            )
+            draw_receipts(
+                self.canvas,
+                self.fight.receipts,
+                self.tiny,
+                comparison=bool(self.fight.revealed),
+                stamp_time=stamp_time,
+                retry_progress=retry_progress,
+            )
+        elif self.case.counter == STACK_SURGE and not self.fight.solved:
+            progress = (
+                effect.progress if effect and effect.name == STACK_SURGE else 1
+            )
+            draw_stack_surge(
+                self.canvas, progress, self.fight.drops, self.small
+            )
+        elif self.fight.crash_count > 1:
+            draw_fault_stack(self.canvas, self.fight.crash_count, self.tiny)
+        if effect is None:
+            return
+        if effect.name == "capture":
+            draw_capture(self.canvas, effect.progress)
+        elif effect.name == READ:
+            draw_read_log(self.canvas, effect.progress, ally, target)
+        elif effect.name == REPEAT_CRASH:
+            draw_crash_echo(self.canvas, effect.progress, target)
+        elif effect.name not in (DOUBLE_STAMP, STACK_SURGE, "retry_receipt"):
+            draw_move(
+                self.canvas,
+                effect.name,
+                effect.progress,
+                self.small,
+                compare=bool(self.case.opening_receipts),
+                patched=self.fight.pending,
+                patch_visible=effect.name == PATCH
+                and self.fight.step.move == PATCH,
+            )

@@ -6,6 +6,7 @@ import pygame
 from tuxemon.client import LocalPygameClient
 from tuxemon.database.runtime import db
 from tuxemon.debugging.cases import READ
+from tuxemon.debugging.names import PROBLEM_NAMES_VERSION
 from tuxemon.launcher import GameLauncher
 from tuxemon.monster.monster import Monster
 from tuxemon.session import local_session
@@ -28,6 +29,7 @@ def launch(config, context) -> None:
     client.event_engine.execute_action("play_music", ["music_city_park"])
     player = local_session.player
     player.game_variables.set("debug_trail_active", True)
+    player.game_variables.set(PROBLEM_NAMES_VERSION, True)
     starter = Monster.spawn_base("dandylion", 5)
     starter.moves.replace_all_moves([Technique.create(READ)])
     player.party.add_monster(starter, 0)
