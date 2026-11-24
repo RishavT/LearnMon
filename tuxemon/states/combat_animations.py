@@ -174,7 +174,11 @@ class CombatAnimations(Menu[None], ABC):
         feet = self.hud_manager.get_feet_position(npc, monster)
 
         # Load and scale capture device sprite
-        capdev = self.load_sprite(f"gfx/items/{monster.capture_device}.png")
+        capdev = self.load_surface(
+            graphics.load_and_scale(
+                f"gfx/items/{monster.capture_device}.png", self.factor
+            )
+        )
         graphics.scale_sprite(capdev, 0.4)
         capdev.rect.center = (feet[0], feet[1] - self.scale_int(60))
 
@@ -440,7 +444,9 @@ class CombatAnimations(Menu[None], ABC):
         """
         sprite = self.hud_manager.get_hud(monster)
         if sprite is None:
-            sprite = self.load_sprite(filename, layer=layer)
+            sprite = self.load_surface(
+                graphics.load_and_scale(filename, self.factor), layer=layer
+            )
         elif self.sprites.get_layer_of_sprite(sprite) != layer:
             self.sprites.change_layer(sprite, layer)
 
@@ -820,7 +826,9 @@ class CombatAnimations(Menu[None], ABC):
         monster_sprite = self.sprite_map.get_sprite(monster)
         if monster_sprite is None:
             raise KeyError(f"Sprite not found for entity: {monster.name}")
-        sprite = self.load_sprite(item.sprite)
+        sprite = self.load_surface(
+            graphics.load_and_scale(item.sprite, self.factor)
+        )
         animate = partial(
             self.animate, sprite.rect, transition="in_quad", duration=1.0
         )

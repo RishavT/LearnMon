@@ -29,6 +29,10 @@ class DebugCombatMenuState(MainCombatMenuState):
     def __init__(self, client: BaseClient, **kwargs: Any) -> None:
         super().__init__(client=client, **kwargs)
 
+    def create_new_menu_items_group(self) -> None:
+        super().create_new_menu_items_group()
+        self.menu_items.rectangular = True
+
     def get_menu_profile(self) -> tuple[dict[str, str], dict[str, bool]]:
         return (
             {
