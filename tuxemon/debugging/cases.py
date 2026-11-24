@@ -233,9 +233,10 @@ class Encounter:
     def use(self, move: str, known: set[str]) -> Effectiveness | None:
         if move not in known or self.solved or self.defeated or self.pending:
             return
-        self.turns += 1
         if move == self.step.move:
             new_evidence = self.revealed <= self.progress
+            if new_evidence:
+                self.turns += 1
             self.revealed = max(self.revealed, self.progress + 1)
             self.message = self.step.evidence
             self.pending = bool(self.step.options)
@@ -249,6 +250,12 @@ class Encounter:
                 if new_evidence
                 else Effectiveness.REVIEW
             )
+        if move in (READ, INSPECT) and any(
+            step.move == move for step in self.case.steps[: self.revealed]
+        ):
+            self.message = self.evidence_notes[-1]
+            return Effectiveness.REVIEW
+        self.turns += 1
         if move == RETRY and self.case.opening_receipts:
             self.add_retry_receipt()
         elif move == RETRY:

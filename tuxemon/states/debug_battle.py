@@ -298,9 +298,18 @@ class DebugBattleState(State):
 
     def apply_move(self, move: str) -> None:
         before = self.battle_counts()
+        reopening_current_step = move == self.fight.step.move
+        previous_feedback = (
+            self.feedback if not self.feedback_is_warning else ""
+        )
         result = self.fight.use(move, set(self.moves))
         self.feedback_is_warning = result == Effectiveness.NOT_EFFECTIVE
-        self.feedback = self.fight.message if self.feedback_is_warning else ""
+        if self.feedback_is_warning:
+            self.feedback = self.fight.message
+        elif result == Effectiveness.REVIEW and not reopening_current_step:
+            self.feedback = previous_feedback
+        else:
+            self.feedback = ""
         if result in (
             Effectiveness.SUPER_EFFECTIVE,
             Effectiveness.REVIEW,

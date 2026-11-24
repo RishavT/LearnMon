@@ -127,9 +127,10 @@ class BattleHUD:
     ) -> None:
         pygame.draw.rect(canvas, PANEL, card, border_radius=8)
         pygame.draw.rect(canvas, EDGE, card, 1, border_radius=8)
-        canvas.blit(
-            font.render(name, True, INK), (card.left + 11, card.top + 6)
-        )
+        name_image = font.render(name, True, INK)
+        if name_image.get_width() > card.width - 22:
+            name_image = small.render(name, True, INK)
+        canvas.blit(name_image, (card.left + 11, card.top + 6))
         if meter is None:
             return
         bar = pygame.Rect(card.x + 11, card.y + 50, card.width - 22, 9)

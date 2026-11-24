@@ -69,3 +69,32 @@ def test_opening_and_combat_hud_fit_the_battle_canvas():
     assert canvas.get_at((232, 65)) == pygame.Color("#0c201e")
     assert canvas.get_at((820, 65)) == pygame.Color("#9cddb5")
     assert canvas.get_at((908, 65)) == pygame.Color("#0c201e")
+
+
+def test_caught_name_leaves_space_inside_the_wild_card_right_edge():
+    pygame.font.init()
+    canvas = pygame.Surface((960, 540))
+    font = pygame.font.Font(None, 26)
+    small = pygame.font.Font(None, 21)
+    hud = new_hud()
+    margin = pygame.Rect(926, 17, 34, 24)
+    for creature in ("Echo Order", "Checkout Blackout"):
+        canvas.fill("black")
+        hud.draw_header(
+            canvas,
+            font,
+            small,
+            "Dandylion",
+            creature,
+            "Case solved",
+            4,
+            4,
+            caught=True,
+        )
+        rendered_margin = pygame.image.tobytes(
+            canvas.subsurface(margin), "RGB"
+        )
+        if creature == "Echo Order":
+            empty_margin = rendered_margin
+        else:
+            assert rendered_margin == empty_margin

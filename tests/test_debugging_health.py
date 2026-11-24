@@ -81,6 +81,8 @@ def test_defeat_retry_and_backpack_share_one_attempt_budget(monkeypatch):
     battle.active = battle.selected = 0
     battle.elapsed = 0.0
     battle.caught = battle.announcing = False
+    battle.feedback = ""
+    battle.feedback_is_warning = False
     battle.party = [
         Mock(moves=Mock(get_moves=lambda: [SimpleNamespace(slug=READ)])),
         Mock(moves=Mock(get_moves=lambda: [SimpleNamespace(slug=RETRY)])),
@@ -120,3 +122,50 @@ def test_repeated_wrong_trace_can_be_defeated_without_spending_read_log():
     assert fight.party_hp == 0
     assert len(fight.evidence_notes) == 1
     assert fight.message == "That choice does not match the evidence."
+
+
+def test_echo_comparison_review_preserves_changed_receipts_and_latest_evidence():
+    fight = Encounter(CASES[1])
+    known = {INSPECT, READ, RETRY}
+    fight.use(INSPECT, known)
+    assert fight.use(RETRY, known).value == "Not effective."
+    assert fight.receipts[-1].order_id == 313
+    fight.use(READ, known)
+    fight.answer(2)
+    latest_evidence = fight.evidence_notes[-1]
+    before = (
+        fight.party_hp,
+        fight.wild_hp,
+        fight.turns,
+        fight.drops,
+        fight.receipts,
+    )
+
+    assert fight.use(INSPECT, known).value == "Review"
+    assert fight.message == latest_evidence
+    assert (
+        fight.party_hp,
+        fight.wild_hp,
+        fight.turns,
+        fight.drops,
+        fight.receipts,
+    ) == before
+    assert fight.step.move == READ and not fight.pending
+
+    assert fight.use(READ, known).value == "Review"
+    fight.answer(0)
+    assert fight.solved
+
+
+def test_checkout_can_review_an_earlier_clue_without_reopening_its_answer():
+    fight = Encounter(CASES[2])
+    known = {INSPECT, READ}
+    fight.use(INSPECT, known)
+    fight.use(READ, known)
+    fight.answer(1)
+    before = (fight.party_hp, fight.wild_hp, fight.turns, fight.drops)
+    next_step = fight.step
+
+    assert fight.use(READ, known).value == "Review"
+    assert fight.step == next_step and not fight.pending
+    assert (fight.party_hp, fight.wild_hp, fight.turns, fight.drops) == before
