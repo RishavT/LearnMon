@@ -160,3 +160,28 @@ def test_move_cues_play_once_even_when_frames_skip(monkeypatch):
         cue.args[0] for cue in battle.client.sound_manager.play.call_args_list
     ] == ["sfx_pulse", "sfx_shine"]
     completed.assert_called_once()
+
+
+def test_battle_does_not_erase_the_volume_when_music_is_muted(monkeypatch):
+    from tuxemon.audio import MusicPlayerState
+    from tuxemon.state.state import State
+    from tuxemon.states.debug_battle import DebugBattleState
+
+    monkeypatch.setattr(State, "resume", lambda self: None)
+    monkeypatch.setattr(State, "shutdown", lambda self: None)
+    music = MusicPlayerState()
+    monkeypatch.setattr(music, "load", Mock())
+    music.play("music_city_park", volume=0.27)
+    music.muted = True
+
+    battle = DebugBattleState.__new__(DebugBattleState)
+    battle.client = Mock(current_music=music)
+    battle.park_mix = None
+    battle.resume()
+    assert music.current_song == "music_battle_loop_slow"
+    assert music.get_volume() == 0
+    battle.shutdown()
+    assert music.current_song == "music_city_park"
+    assert music.get_volume() == 0
+    music.muted = False
+    assert music.get_volume() == 0.27

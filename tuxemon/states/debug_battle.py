@@ -103,7 +103,10 @@ class DebugBattleState(State):
         super().resume()
         if self.park_mix is None:
             music = self.client.current_music
-            self.park_mix = (music.current_song, music.get_volume())
+            self.park_mix = (
+                music.current_song,
+                music.get_volume(ignore_mute=True),
+            )
             music.play(
                 "music_battle_loop_slow",
                 volume=0.72 * self.park_mix[1],
