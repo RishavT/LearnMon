@@ -36,7 +36,7 @@ def launch(config, context) -> None:
         [
             "Welcome to the Debugging Trail. Your Dandylion knows Read Log.",
             "Walk right into the grass to find a bug. Keep walking in the grass after each capture.",
-            "Arrow keys move and select. Enter confirms. In battle, Fight opens moves, Tuxemon switches party members, and Case Notes reviews clues.",
+            "Arrow keys move and select. Enter confirms. In battle, Up and Down select an action. Left and Right switch your active Tuxemon.",
         ],
         dialog_speed="max",
     )
