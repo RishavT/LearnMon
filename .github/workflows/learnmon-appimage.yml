@@ -1,0 +1,42 @@
+name: Publish LearnMon AppImage
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing LearnMon release tag
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    env:
+      RELEASE_TAG: ${{ inputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build and verify the AppImage
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Expected a vMAJOR.MINOR.PATCH release tag" >&2
+            exit 2
+          fi
+          gh release view "$RELEASE_TAG"
+          git fetch --depth=1 origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+          python -m pip install uv==0.13.9
+          bash buildconfig/appimage/build.sh "$RELEASE_TAG" dist
+          TUXEMON_STORAGE_DIR="$RUNNER_TEMP/learnmon" \
+            "./dist/LearnMon-$RELEASE_TAG-x86_64.AppImage" --appimage-extract-and-run --help
+          (cd dist && sha256sum ./*.AppImage > SHA256SUMS)
+      - name: Attach the verified build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$RELEASE_TAG" "dist/LearnMon-$RELEASE_TAG-x86_64.AppImage" dist/SHA256SUMS
