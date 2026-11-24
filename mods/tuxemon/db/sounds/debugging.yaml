@@ -6,6 +6,10 @@
   slug: debug_battle_start
 - file: debugging/crash.wav
   slug: debug_crash
+- file: debugging/damage.wav
+  slug: debug_damage
+- file: debugging/effective.wav
+  slug: debug_effective
 - file: debugging/patch_apply.wav
   slug: debug_patch_apply
 - file: debugging/read_reveal.wav
