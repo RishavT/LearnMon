@@ -1,0 +1,74 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<map version="1.10" tiledversion="git" orientation="orthogonal" renderorder="right-down" compressionlevel="0" width="40" height="40" tilewidth="16" tileheight="16" infinite="0" nextlayerid="41" nextobjectid="202">
+  <properties>
+    <property name="edges" value="clamped" />
+    <property name="scenario" value="xero" />
+    <property name="slug" value="debug_citypark" />
+    <property name="map_type" value="route" />
+  </properties>
+  <tileset firstgid="1" name="Tileset" tilewidth="16" tileheight="16" tilecount="1600" columns="40">
+    <image source="../gfx/tilesets/Superpowers_Tilesheet.png" width="640" height="640" />
+  </tileset>
+  <tileset firstgid="1601" source="../gfx/tilesets/core_buildings.tsx" />
+  <tileset firstgid="3951" source="../gfx/tilesets/core_outdoor.tsx" />
+  <tileset firstgid="6726" source="../gfx/tilesets/core_set pieces.tsx" />
+  <layer id="1" name="Tile Layer 1" width="40" height="40">
+    <data encoding="base64" compression="zlib">
+   eAHt1LEJgDAQheG3gSi6npXDOIu6i7hApojWnkVK0UbuhL840gTyePmSVEmJoQMMYOAjA1MtzS9msT0ef9Fq5w7t82xB842NtFu2I2g+r96KpWy9XP3cjVdvJR+rz7und3rHAAYwgAEMYAADGMAABjAQz0DfxcuEk//fyQlEnrz4
+  </data>
+  </layer>
+  <layer id="2" name="Tile Layer 2" width="40" height="40">
+    <data encoding="base64" compression="zlib">
+   eAHtlEkKwkAURP9ON4Kg4JALqAdxAo/jdA4hXkXQAzkdwmqkIBtB0vQQqIaXH5Lu/i8VkrJvdgZlwnpvmT3AE7zAG9DnCq8bSFkHbbMhGIExKAB96GkJxxw+C7AEK7AG9KJnKr1OYbaFzw7swQEcAb3omcrvV1960ZPzJl2zaSRm6FMd7O2u04ue1Xmpzjf4Tt1wlV70/N7J55ijF/PLJyWZKIH6CZx69dfGWHnJ3C9EBjn/Y+jGGuL5ffdsglsTHH3fQ4j1zI01RA/fPWO5uT6xevlmovVKQAkoASWgBJSAElACSuDfBD7dmVz6
+  </data>
+  </layer>
+  <layer id="3" name="Tile Layer 3" width="40" height="40">
+    <data encoding="base64" compression="zlib">
+   eAHtlruKVEEQhttEBBEFxwuYLRr5BIKJCrqBBrrGMiYirMaaGy6Comg6oaH3RF/Bh1gfwSewfmc+LIrqPu05sy6IDb3Vp85fVV/3TvVMKf/2eDUr5bXNvzF+nCiFer32i7F9tdmrj7o/3Rf1ei35e/VRR/x/O+4ELh0v5bLNKzbHjlMnx0YOx90zrjv2ub8/gY8q8bM99Vl5xaf9w3cj3AXUgKFl42d76jN8Fx2ffGKEixotLq8nbqqlns7vruPj/OCiDvrMKgb9uix1xKd7V/9f2GSPnFkqqCdfa5JPtqXTu6Hhz2THuNS/T21qxHivXSqG/07l40xiJdiwel/Txlj/7PfEeqyN959nU03yUj/qM7/fE+ux1t8vsMnCRV44pL+Q3Jc1P3G7R1mV0rNGXcsLF5xen93nypP5iTt4jFUpPWvUbyt54YITvTie2Pm9N+sHfu55/07r846vZ62YR7OyuGVT9XxefZ/ABaf0GuJ4Y/qtWZk/tvnL6fw+j959Wu3jqtlrA3NzpSWn5V9YnYXqxbxwwUmM+L6Z3vY1t/3Noz/m2V7VlL1un+vWfBj4lPvdql7MCxecnkP3+YeQS9zc82hlPZ/6rjUzvlpeuODUd7SG9Pye0LkzvB+frOdrnZ3eZXzqD+r5vHDByTtxxN8Telfzez5/dtsW88Cm90U++iOrBxecYtAQh/89sfTW/Z7Pn98LC3xp0/siH/2R1YMLzo0DSxLxZf1U88P30eL8WbE+dPq3/7Np4lB/ZPXggpM4cah/s/tP/thn8Cnen5XWYvM+anhLvZgXLjiJkV59mt1/rf5VPGfmrT8/anir/sjywgUnMeJTP2X3X9Znz0xfu5c37V1r0B9ZXrjgJI/41E/Z/Zf1GXGZjf0QNfSHz8udBhecxIov66ean7jMDvEpRv2R1YMLTvLvmN7/3s78z01Tm+hle/hq9eCC0+f9bvXXMVp8vof8mrpwwYkfu3G4lLM2z9kcO+BTf/rhebK1tHDB6eO1vmlcWzZvJ3zqt56R3ceKy5i8T/0CF5xY6vK83xZOLHw877eN5wNfzUb9Xj/H86lx4Y/6vX7u3T98vfp16Xr3D1+vfl26nyUbJig=
+  </data>
+  </layer>
+  <layer id="4" name="Above Player" width="40" height="40">
+    <data encoding="base64" compression="zlib">
+   eAHt1LEJACAQA8DUjuD+89mI1jqF8nCB9OEePpHKAqNXXm87AQIVBfydilezmQABAgQIECBAgACBHwKzJet23woBAgQIvBc46kcFDQ==
+  </data>
+  </layer>
+  <objectgroup color="#ff0000" id="5" name="Collisions">
+    <object id="1" type="collision" x="0" y="0" width="32" height="640" />
+    <object id="2" type="collision" x="32" y="0" width="32" height="32" />
+    <object id="4" type="collision" x="64" y="32" width="192" height="32" />
+    <object id="5" type="collision" x="256" y="32" width="32" height="16" />
+    <object id="6" type="collision" x="288" y="32" width="224" height="32" />
+    <object id="11" type="collision" x="192" y="544" width="448" height="96" />
+    <object id="12" type="collision" x="608" y="224" width="32" height="320" />
+    <object id="13" type="collision" x="32" y="608" width="128" height="32" />
+    <object id="14" type="collision" x="96" y="544" width="96" height="32" />
+    <object id="17" type="collision" x="208" y="208" width="304" height="32" />
+    <object id="18" type="collision" x="160" y="144" width="320" height="32" />
+    <object id="19" type="collision" x="32" y="128" width="464" height="16" />
+    <object id="20" type="collision" x="176" y="112" width="320" height="16" />
+    <object id="30" type="collision" x="464" y="176" width="32" height="32" />
+    <object id="31" type="collision" x="32" y="144" width="112" height="32" />
+    <object id="32" type="collision" x="608" y="64" width="32" height="96" />
+    <object id="92" type="collision" x="112" y="288" width="16" height="32" />
+    <object id="93" type="collision" x="112" y="416" width="16" height="32" />
+    <object id="94" type="collision" x="496" y="352" width="16" height="32" />
+    <object id="95" type="collision" x="496" y="272" width="16" height="32" />
+    <object id="96" type="collision" x="496" y="432" width="16" height="32" />
+    <object id="97" type="collision" x="608" y="160" width="16" height="16" />
+    <object id="98" type="collision" x="512" y="48" width="64" height="16" />
+    <object id="100" type="collision" x="32" y="544" width="32" height="64" />
+    <object id="114" type="collision" x="32" y="384" width="16" height="16" />
+    <object id="127" type="collision" x="576" y="32" width="16" height="16" />
+    <object id="128" type="collision" x="592" y="48" width="16" height="16" />
+    <object id="130" type="collision" x="96" y="512" width="48" height="32" />
+  </objectgroup>
+  <objectgroup id="40" name="Debug encounters">
+    <object id="201" name="Debugging Trail" type="event" x="304" y="304" width="128" height="128">
+      <properties>
+        <property name="act10" value="debug_encounter" />
+        <property name="cond10" value="is char_at player" />
+        <property name="cond20" value="is char_moved player" />
+      </properties>
+    </object>
+  </objectgroup>
+</map>

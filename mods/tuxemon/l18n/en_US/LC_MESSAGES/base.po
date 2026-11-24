@@ -19269,3 +19269,31 @@ msgstr "Town Hall"
 
 msgid "flower_lady"
 msgstr "Flower Lady"
+
+
+msgid "read_log"
+msgstr "Read Log"
+
+msgid "read_log_description"
+msgstr "Read the latest exception or trace."
+
+
+msgid "inspect_request"
+msgstr "Inspect Request"
+
+msgid "inspect_request_description"
+msgstr "Inspect a browser request and its result."
+
+
+msgid "retry_request"
+msgstr "Retry Request"
+
+msgid "retry_request_description"
+msgstr "Send the request again and observe the result."
+
+
+msgid "patch_code"
+msgstr "Patch Code"
+
+msgid "patch_code_description"
+msgstr "Apply a fix supported by the evidence."

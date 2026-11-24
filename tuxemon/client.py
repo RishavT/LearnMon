@@ -35,13 +35,17 @@ class LocalPygameClient(BaseClient):
 
     @classmethod
     def create(
-        cls, config: TuxemonConfig, context: DisplayContext
+        cls,
+        config: TuxemonConfig,
+        context: DisplayContext,
+        *,
+        enable_network: bool = True,
     ) -> LocalPygameClient:
         """
         Initialize the LocalPygameClient with the given configuration and screen.
         """
         try:
-            client = LocalPygameClient(config, context)
+            client = cls(config, context, enable_network=enable_network)
             logger.info("Client initialized successfully.")
         except (TypeError, ValueError) as e:
             logger.error(f"Failed to initialize client: {e}")
@@ -53,8 +57,14 @@ class LocalPygameClient(BaseClient):
             raise
         return client
 
-    def __init__(self, config: TuxemonConfig, context: DisplayContext):
-        super().__init__(config, context)
+    def __init__(
+        self,
+        config: TuxemonConfig,
+        context: DisplayContext,
+        *,
+        enable_network: bool = True,
+    ) -> None:
+        super().__init__(config, context, enable_network=enable_network)
 
         # movie creation
         self.frame_number = 0

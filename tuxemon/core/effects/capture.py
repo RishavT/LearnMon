@@ -77,16 +77,16 @@ class CaptureEffect(CoreEffect):
         formula.on_capture_success(item, target, self.session.player)
         if self.session.player.tuxepedia.is_seen(target.slug):
             self.client.combat_session.set_variable("new_tuxepedia", True)
-        self.session.player.tuxepedia.register_caught(target.slug)
-        target.capture_device = item.slug
-        target.wild = False
-        current_status = target.status.current_status
-        if (
-            current_status
-            and not current_status.behaviors.persists_after_combat
-        ):
-            target.status.clear_status(self.session)
-        target.set_acquisition(Acquisition.CAPTURED)
-        self.session.player.party.add_monster(
-            target, len(self.session.player.monsters)
-        )
+        register_capture(self.session, item, target)
+
+
+def register_capture(session: Session, item: Item, target: Monster) -> None:
+    """Transfer a successfully captured monster to the player."""
+    session.player.tuxepedia.register_caught(target.slug)
+    target.capture_device = item.slug
+    target.wild = False
+    current_status = target.status.current_status
+    if current_status and not current_status.behaviors.persists_after_combat:
+        target.status.clear_status(session)
+    target.set_acquisition(Acquisition.CAPTURED)
+    session.player.party.add_monster(target, len(session.player.monsters))

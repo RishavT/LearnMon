@@ -55,6 +55,7 @@ def build_parser() -> ArgumentParser:
         help="Run in headless mode (no graphical interface).",
     )
 
+    parser.add_argument("--debug-campaign", action="store_true")
     return parser
 
 
@@ -142,7 +143,11 @@ def launch_game(argv: list[str] | None = None) -> None:
     try:
         apply_config_from_args(config, args)
 
-        if args.headless:
+        if args.debug_campaign and not args.headless:
+            from tuxemon.debugging.campaign import launch
+
+            launch(config, context)
+        elif args.headless:
             tuxemon_main.headless(config=config, context=context)
         else:
             tuxemon_main.main(

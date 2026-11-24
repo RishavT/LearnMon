@@ -388,9 +388,10 @@ class MonsterMenuHandler:
                 {
                     "move": partial(self.select_monster, mon),
                     "sort": lambda: self.open_sort_submenu(monster_menu),
-                    "release": partial(self.release_monster, mon),
                 }
             )
+            if not self.party.owner.game_variables.get("debug_trail_active"):
+                actions["release"] = partial(self.release_monster, mon)
 
         options = create_choice_options(actions)
         menu = MenuOptions(options)
