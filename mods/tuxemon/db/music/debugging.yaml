@@ -1,4 +1,6 @@
 - file: debug_battle.ogg
   slug: debug_battle
+- file: debug_defeat.ogg
+  slug: debug_defeat
 - file: debug_recruit.ogg
   slug: debug_recruit

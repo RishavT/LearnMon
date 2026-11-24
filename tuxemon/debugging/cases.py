@@ -2,6 +2,8 @@
 """Deterministic encounter rules. All web requests and logs are fictional."""
 
 from dataclasses import dataclass
+from enum import Enum
+from typing import ClassVar
 
 READ = "read_log"
 INSPECT = "inspect_request"
@@ -10,6 +12,16 @@ PATCH = "patch_code"
 REPEAT_CRASH = "repeat_crash"
 DOUBLE_STAMP = "double_stamp"
 STACK_SURGE = "stack_surge"
+MAX_HP = 100
+COUNTER_DAMAGE = 25
+RETRY_DAMAGE = 34
+
+
+class Effectiveness(str, Enum):
+    SUPER_EFFECTIVE = "Super effective!"
+    NOT_EFFECTIVE = "Not effective."
+    REVIEW = "Review"
+
 
 LABELS = {
     READ: "Read Log",
@@ -159,6 +171,8 @@ CASES = (
 @dataclass
 class Encounter:
     case: Case
+    max_hp: ClassVar[int] = MAX_HP
+    party_hp: int = MAX_HP
     progress: int = 0
     revealed: int = 0
     turns: int = 0
@@ -166,6 +180,31 @@ class Encounter:
     retries: tuple[Receipt, ...] = ()
     pending: bool = False
     message: str = ""
+
+    @property
+    def defeated(self) -> bool:
+        return self.party_hp == 0
+
+    @property
+    def milestones(self) -> int:
+        answers_given = sum(
+            bool(step.options) for step in self.case.steps[: self.progress]
+        )
+        return self.revealed + answers_given
+
+    @property
+    def total_milestones(self) -> int:
+        return len(self.case.steps) + sum(
+            bool(step.options) for step in self.case.steps
+        )
+
+    @property
+    def wild_hp(self) -> int:
+        # Each unique evidence reveal and each correct answer counts once.
+        return (
+            self.max_hp
+            - self.max_hp * self.milestones // self.total_milestones
+        )
 
     @property
     def receipts(self) -> tuple[Receipt, ...]:
@@ -191,19 +230,32 @@ class Encounter:
     def evidence_notes(self) -> list[str]:
         return [step.evidence for step in self.case.steps[: self.revealed]]
 
-    def use(self, move: str, known: set[str]) -> None:
-        if move not in known or self.solved or self.pending:
+    def use(self, move: str, known: set[str]) -> Effectiveness | None:
+        if move not in known or self.solved or self.defeated or self.pending:
             return
-        self.turns += 1
         if move == self.step.move:
+            new_evidence = self.revealed <= self.progress
+            if new_evidence:
+                self.turns += 1
             self.revealed = max(self.revealed, self.progress + 1)
             self.message = self.step.evidence
             self.pending = bool(self.step.options)
             if self.pending:
-                self.disrupt()
+                if new_evidence:
+                    self.disrupt()
             else:
                 self.advance()
-            return
+            return (
+                Effectiveness.SUPER_EFFECTIVE
+                if new_evidence
+                else Effectiveness.REVIEW
+            )
+        if move in (READ, INSPECT) and any(
+            step.move == move for step in self.case.steps[: self.revealed]
+        ):
+            self.message = self.evidence_notes[-1]
+            return Effectiveness.REVIEW
+        self.turns += 1
         if move == RETRY and self.case.opening_receipts:
             self.add_retry_receipt()
         elif move == RETRY:
@@ -216,22 +268,36 @@ class Encounter:
             )
         else:
             self.message = "No new evidence yet. Follow the clue from the last useful step."
-        self.disrupt()
+        return self.take_counter(
+            RETRY_DAMAGE if move == RETRY else COUNTER_DAMAGE
+        )
 
-    def answer(self, index: int) -> None:
-        if not self.pending:
+    def answer(self, index: int) -> Effectiveness | None:
+        if (
+            not self.pending
+            or self.defeated
+            or not 0 <= index < len(self.step.options)
+        ):
             return
         self.pending = False
         if index == self.step.answer:
             self.message = self.step.explanation or "Diagnosis accepted."
             self.progress += 1
+            return Effectiveness.SUPER_EFFECTIVE
         elif self.case.opening_receipts and index == 1:
             self.add_retry_receipt()
-            self.disrupt()
+            return self.take_counter(RETRY_DAMAGE)
         else:
-            self.message = (
-                "That choice does not match the evidence. Inspect it again."
-            )
+            result = self.take_counter(COUNTER_DAMAGE)
+            self.message = "That choice does not match the evidence."
+            if not self.defeated:
+                self.message += " Try the technique again."
+            return result
+
+    def take_counter(self, damage: int) -> Effectiveness:
+        self.party_hp = max(0, self.party_hp - damage)
+        self.disrupt()
+        return Effectiveness.NOT_EFFECTIVE
 
     def add_retry_receipt(self) -> None:
         order = self.receipts[-1].order_id + 1

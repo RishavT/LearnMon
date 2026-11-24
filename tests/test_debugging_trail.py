@@ -31,7 +31,7 @@ def test_wrong_trace_answer_leaves_a_recoverable_case():
     encounter.use(READ, {READ})
     encounter.answer(0)
     assert not encounter.solved
-    assert encounter.drops == 1
+    assert encounter.drops == 2
     encounter.use(READ, {READ})
     encounter.answer(1)
     assert encounter.solved
@@ -75,6 +75,7 @@ def test_move_result_is_revealed_once_when_its_effect_finishes(monkeypatch):
     monkeypatch.setattr(State, "update", lambda self, dt: None)
     battle = DebugBattleState.__new__(DebugBattleState)
     battle.elapsed = 0.0
+    battle.hud = Mock()
     reveal = Mock()
     battle.play_effect(READ, 0.5, reveal)
 
@@ -142,6 +143,7 @@ def test_move_cues_play_once_even_when_frames_skip(monkeypatch):
     monkeypatch.setattr(State, "update", lambda self, dt: None)
     battle = DebugBattleState.__new__(DebugBattleState)
     battle.elapsed = 0.0
+    battle.hud = Mock()
     battle.client = Mock()
     completed = Mock()
     battle.play_effect(

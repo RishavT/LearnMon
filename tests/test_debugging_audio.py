@@ -9,6 +9,7 @@ from tuxemon.database.registry import validator
 from tuxemon.debugging.audio import (
     BATTLE_TRACK,
     CUES,
+    DEFEAT_TRACK,
     REWARD_TRACK,
     BattleAudio,
 )
@@ -23,13 +24,11 @@ def test_battle_music_follows_capture_and_keeps_player_volume(monkeypatch):
     )
     music.play("music_city_park", volume=0.27)
     music.mute()
-    sounds = Mock()
-    battle = BattleAudio(music, sounds)
+    battle = BattleAudio(music)
 
     battle.enter()
     battle.enter()
     assert music.current_song == BATTLE_TRACK
-    sounds.play.assert_called_once_with("debug_battle_start")
 
     music.set_volume(0.46)
     battle.reward()
@@ -48,6 +47,36 @@ def test_battle_music_follows_capture_and_keeps_player_volume(monkeypatch):
     assert music.get_volume() == 0.0
     music.unmute()
     assert music.get_volume() == 0.46
+
+
+def test_defeat_can_retry_or_leave_without_losing_park_track(monkeypatch):
+    music = MusicPlayerState()
+    load = Mock()
+    monkeypatch.setattr(music, "load", load)
+    music.play("music_city_park", volume=0.27)
+    music.muted = True
+    battle = BattleAudio(music)
+
+    battle.enter()
+    battle.defeat()
+    battle.defeat()
+    assert load.call_args.args[:3] == (DEFEAT_TRACK, 0.0, 0)
+    battle.retry()
+    battle.retry()
+    assert music.current_song == BATTLE_TRACK
+
+    battle.defeat()
+    battle.leave()
+    assert [call.args[0] for call in load.call_args_list] == [
+        "music_city_park",
+        BATTLE_TRACK,
+        DEFEAT_TRACK,
+        BATTLE_TRACK,
+        DEFEAT_TRACK,
+        "music_city_park",
+    ]
+    assert music.get_volume() == 0.0
+    assert music.get_volume(ignore_mute=True) == 0.27
 
 
 def test_double_stamp_repeats_the_same_impact():
@@ -73,14 +102,14 @@ def test_debug_audio_assets_play_through_pygame(monkeypatch):
     try:
         sounds = SoundManager()
         slugs = {slug for cues in CUES.values() for _, slug in cues}
-        for slug in slugs | {"debug_battle_start"}:
+        for slug in slugs:
             wrapper = sounds.load_sound(slug)
             assert isinstance(wrapper, SoundWrapper)
             assert wrapper.sound is not None
             assert 0.05 < wrapper.sound.get_length() < 0.35
 
         music = MusicPlayerState()
-        for track in (BATTLE_TRACK, REWARD_TRACK):
+        for track in (BATTLE_TRACK, REWARD_TRACK, DEFEAT_TRACK):
             pygame.mixer.music.load(music.get_path(track))
             pygame.mixer.music.play()
             assert pygame.mixer.music.get_busy()
