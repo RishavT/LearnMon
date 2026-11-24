@@ -19297,3 +19297,7 @@ msgstr "Patch Code"
 
 msgid "patch_code_description"
 msgstr "Apply a fix supported by the evidence."
+
+
+msgid "debug_case_notes"
+msgstr "Case Notes"

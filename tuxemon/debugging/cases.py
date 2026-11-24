@@ -22,6 +22,7 @@ class Step:
     evidence: str
     options: tuple[str, ...] = ()
     answer: int = 0
+    explanation: str = ""
 
 
 @dataclass(frozen=True)
@@ -51,6 +52,8 @@ CASES = (
                 "Where was the exception thrown?",
                 ("menu.js:16", "cart.js:42", "index.html:8"),
                 1,
+                "cart.js:42 is the first frame and the line that threw. "
+                "The other frames show how the code reached it.",
             ),
         ),
         (INSPECT, RETRY),
@@ -77,6 +80,8 @@ CASES = (
                     "Submit a fresh order",
                     "Clear browser cache",
                 ),
+                explanation="The log says the order was committed. Looking up #311 "
+                "recovers the result without submitting a second order.",
             ),
         ),
         (PATCH,),
@@ -100,6 +105,8 @@ CASES = (
                     "The order was already saved",
                 ),
                 1,
+                "The request ID ties the HTTP 500 to a null coupon. The log "
+                "also confirms the order was rolled back.",
             ),
             Step(
                 PATCH,
@@ -110,6 +117,8 @@ CASES = (
                     "Treat a missing coupon as zero discount",
                 ),
                 2,
+                "The patch handles the missing coupon. Retry the request to "
+                "check the order and total.",
             ),
             Step(
                 RETRY,
@@ -126,6 +135,7 @@ CASES = (
 class Encounter:
     case: Case
     progress: int = 0
+    revealed: int = 0
     turns: int = 0
     drops: int = 0
     duplicates: int = 0
@@ -140,11 +150,16 @@ class Encounter:
     def step(self) -> Step:
         return self.case.steps[self.progress]
 
+    @property
+    def evidence_notes(self) -> list[str]:
+        return [step.evidence for step in self.case.steps[: self.revealed]]
+
     def use(self, move: str, known: set[str]) -> None:
         if move not in known or self.solved or self.pending:
             return
         self.turns += 1
         if move == self.step.move:
+            self.revealed = max(self.revealed, self.progress + 1)
             self.message = self.step.evidence
             self.pending = bool(self.step.options)
             if self.pending:
@@ -168,9 +183,7 @@ class Encounter:
             return
         self.pending = False
         if index == self.step.answer:
-            self.message = (
-                self.step.evidence.splitlines()[0] + "\nDiagnosis accepted."
-            )
+            self.message = self.step.explanation or "Diagnosis accepted."
             self.progress += 1
         else:
             self.message = (
