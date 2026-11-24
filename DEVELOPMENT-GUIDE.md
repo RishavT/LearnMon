@@ -4,6 +4,7 @@ Keep this guide current when playtests, implementation, or releases establish a 
 
 ## Game and learning
 
+- Apply the player-experience questions in [AGENTS.md](AGENTS.md) when shaping and reviewing a change. During playtesting, follow the choice into the next turn to see how the player can use what they discovered or earned.
 - Preserve the Tuxemon world, exploration, party progression, and capture loop. LearnMon’s encounters turn debugging techniques into moves. Each required case must be solvable with the moves the player has earned.
 - Keep the case objective, evidence, and next choice in the battle. Show a full stack trace or request and response together. Explain an outcome through the evidence that changed when the player acted.
 - Give each move a recognizable effect. A scan uncovers a log, a request travels and returns, and a patch changes the line it acts on. Keep effects short enough to support turn rhythm.
