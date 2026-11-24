@@ -153,8 +153,9 @@ class MusicPlayerState:
                 "Music is not playing, volume adjustment not applied."
             )
 
-    def get_volume(self) -> float:
-        return 0.0 if self.muted else self._user_volume
+    def get_volume(self, *, ignore_mute: bool = False) -> float:
+        """Return the effective level, or the saved level before muting."""
+        return 0.0 if self.muted and not ignore_mute else self._user_volume
 
     def mute(self) -> None:
         self.muted = True
