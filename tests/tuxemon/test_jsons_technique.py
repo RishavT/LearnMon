@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 import yaml
 
-ALL_TECHNIQUES = 274
+ALL_TECHNIQUES = 278
 MAX_TECH_ID = 268
 
 SIMPLE_DAMAGE_EFFECT = ("damage", "retaliate", "revenge", "money", "splash")

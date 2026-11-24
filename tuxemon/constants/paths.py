@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0
 # Copyright (c) 2014-2026 William Edwards <shadowapex@gmail.com>, Benjamin Bean <superman2k5@gmail.com>
 import logging
+import os
 import sys
 from pathlib import Path
 
@@ -59,7 +60,12 @@ CORE_CONDITION_PATH = LIBDIR.joinpath(*PLUGIN_CATEGORY_MAP["core_conditions"])
 
 # main game and config dir
 # Ensure this doesn't depend on pygame
-USER_STORAGE_DIR = platform.user_storage.user_dir()
+storage_override = os.environ.get("TUXEMON_STORAGE_DIR")
+USER_STORAGE_DIR = (
+    Path(storage_override)
+    if storage_override
+    else platform.user_storage.user_dir()
+)
 logger.debug(f"userdir: {USER_STORAGE_DIR}")
 
 # config file paths

@@ -82,7 +82,13 @@ class BaseClient(ABC):
     Handles shared setup and lifecycle management for both graphical and headless clients.
     """
 
-    def __init__(self, config: TuxemonConfig, context: DisplayContext) -> None:
+    def __init__(
+        self,
+        config: TuxemonConfig,
+        context: DisplayContext,
+        *,
+        enable_network: bool = True,
+    ) -> None:
         init_assets()
         self.config = config
         self.context = context
@@ -115,7 +121,8 @@ class BaseClient(ABC):
 
         # Set up our networking for multiplayer.
         self.network_manager = NetworkManager(self)
-        self.network_manager.initialize()
+        if enable_network:
+            self.network_manager.initialize()
 
         # Set up our game's event engine which executes actions based on
         # conditions defined in map files.
