@@ -18,10 +18,12 @@ jobs:
       RELEASE_TAG: ${{ inputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Build and verify the AppImage
+      - name: Check the release exists
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -30,6 +32,8 @@ jobs:
             exit 2
           fi
           gh release view "$RELEASE_TAG"
+      - name: Build and verify the AppImage
+        run: |
           git fetch --depth=1 origin "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
           python -m pip install uv==0.13.9
           bash buildconfig/appimage/build.sh "$RELEASE_TAG" dist
