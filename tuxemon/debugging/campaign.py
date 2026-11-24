@@ -34,9 +34,7 @@ def launch(config, context) -> None:
     open_dialog(
         client,
         [
-            "Welcome to the Debugging Trail. Your Dandylion knows Read Log.",
-            "Walk right into the grass to find a bug. Keep walking in the grass after each capture.",
-            "Arrow keys move and select. Enter confirms. In battle, Up and Down select an action. Left and Right switch your active Tuxemon.",
+            "Dandylion knows Read Log. Walk right into the grass to try it.",
         ],
         dialog_speed="max",
     )

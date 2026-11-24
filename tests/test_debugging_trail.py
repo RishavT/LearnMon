@@ -114,3 +114,49 @@ def test_evidence_panel_keeps_request_and_corresponding_log_together():
     assert "cart-19" in lines[0] and "cart-19" in lines[1]
     assert "coupon was null" in lines[2]
     assert "returned 201" not in battle.evidence_for_panel()
+
+
+def test_battle_music_starts_once_and_restores_the_park_mix(monkeypatch):
+    from tuxemon.state.state import State
+    from tuxemon.states.debug_battle import DebugBattleState
+
+    monkeypatch.setattr(State, "resume", lambda self: None)
+    monkeypatch.setattr(State, "shutdown", lambda self: None)
+    battle = DebugBattleState.__new__(DebugBattleState)
+    battle.client = Mock()
+    battle.park_mix = None
+    music = battle.client.current_music
+    music.current_song = "music_city_park"
+    music.get_volume.return_value = 0.27
+    music.muted = False
+
+    battle.resume()
+    battle.resume()
+    battle.shutdown()
+
+    assert music.play.call_args_list[0].args == ("music_battle_loop_slow",)
+    assert len(music.play.call_args_list) == 2
+    music.play.assert_called_with("music_city_park", volume=0.27, fade_ms=300)
+
+
+def test_move_cues_play_once_even_when_frames_skip(monkeypatch):
+    from tuxemon.state.state import State
+    from tuxemon.states.debug_battle import DebugBattleState
+
+    monkeypatch.setattr(State, "update", lambda self, dt: None)
+    battle = DebugBattleState.__new__(DebugBattleState)
+    battle.elapsed = battle.disruption_time = 0.0
+    battle.client = Mock()
+    completed = Mock()
+    battle.play_effect(
+        READ, 0.9, completed, cues=((0.2, "sfx_pulse"), (0.55, "sfx_shine"))
+    )
+
+    battle.update(0.15)
+    battle.update(0.48)
+    battle.update(0.4)
+
+    assert [
+        cue.args[0] for cue in battle.client.sound_manager.play.call_args_list
+    ] == ["sfx_pulse", "sfx_shine"]
+    completed.assert_called_once()
