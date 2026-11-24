@@ -26,9 +26,9 @@ use_failure: combat_miss
 use_success: null
 use_tech: combat_used_x
 visuals:
-  animation: gnaw
+  animation: clock
   flip_axes: ''
   loop: 0
 sound:
-  sfx: sfx_bite
+  sfx: sfx_machine_beep
   volume: 1.5

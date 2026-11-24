@@ -223,11 +223,14 @@ class CombatState(CombatAnimations):
         if not self.text_anim.is_animating() and all(
             map(self.is_task_finished, self.animations)
         ):
-            new_phase = self.machine.determine_next_phase(self.phase)
+            new_phase = self.next_combat_phase()
             if new_phase:
                 self.phase = new_phase
                 self.transition_phase(new_phase)
             self.update_phase()
+
+    def next_combat_phase(self) -> CombatPhase | None:
+        return self.machine.determine_next_phase(self.phase)
 
     def is_blocked(self) -> bool:
         if self.text_anim.is_animating():

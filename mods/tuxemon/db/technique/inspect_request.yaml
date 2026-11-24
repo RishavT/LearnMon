@@ -26,9 +26,9 @@ use_failure: combat_miss
 use_success: null
 use_tech: combat_used_x
 visuals:
-  animation: gnaw
+  animation: energy_beam
   flip_axes: ''
   loop: 0
 sound:
-  sfx: sfx_bite
+  sfx: sfx_blaster
   volume: 1.5

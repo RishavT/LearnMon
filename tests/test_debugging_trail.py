@@ -3,7 +3,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from tuxemon.debugging.cases import CASES, READ, RETRY, Encounter
+from tuxemon.debugging.cases import CASES, INSPECT, READ, RETRY, Encounter
 
 
 def test_each_case_is_solvable_with_moves_unlocked_so_far():
@@ -66,3 +66,24 @@ def test_party_release_is_only_hidden_during_the_debugging_campaign(
 
     options = show_choices.call_args.args[1].get_menu()
     assert any(option.key == "release" for option in options) is not active
+
+
+def test_debugging_battles_use_the_native_combat_screen():
+    from tuxemon.states.combat_state import CombatState
+    from tuxemon.states.debug_battle import DebugBattleState
+
+    assert issubclass(DebugBattleState, CombatState)
+
+
+def test_case_notes_keep_observed_clues_without_revealing_future_steps():
+    encounter = Encounter(CASES[1])
+    assert encounter.evidence_notes == []
+    encounter.use(RETRY, {INSPECT, READ, RETRY})
+    assert encounter.evidence_notes == []
+    encounter.use(INSPECT, {INSPECT})
+    assert encounter.evidence_notes == [encounter.case.steps[0].evidence]
+    encounter.use(READ, {READ})
+    encounter.answer(1)
+    assert not encounter.solved
+    assert len(encounter.evidence_notes) == 2
+    assert "order #311" in encounter.evidence_notes[-1]
