@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar
 
+from pygame_menu.font import get_font
 from pygame_menu.locals import ALIGN_CENTER, ALIGN_LEFT, POSITION_EAST
 from pygame_menu.menu import Menu
 
@@ -81,16 +82,6 @@ class MonsterInfoState(PygameMenuState):
         )
         dark_color = (0x5D, 0x41, 0x07)
         light_color = (0x8A, 0x6F, 0x30)
-        lab1: Any = menu.add.label(
-            title=f"{monster.name.upper()}",
-            label_id="name",
-            font_size=self.font_type.biggest,
-            align=ALIGN_LEFT,
-            float=True,
-            font_color=dark_color,
-        )
-        lab1.translate(fxw(37 / 256), fxh(9.8 / 144))
-        # level + exp
         lab2: Any = menu.add.label(
             title=f"Lv. {monster.level}",
             label_id="level",
@@ -99,7 +90,28 @@ class MonsterInfoState(PygameMenuState):
             float=True,
             font_color=dark_color,
         )
-        lab2.translate(fxw(169 / 256), fxh(12.8 / 144))
+        level_x = fxw(235 / 256) - lab2.get_width()
+        lab2.translate(level_x, fxh(9.8 / 144))
+
+        name = monster.name.upper()
+        name_x = fxw(37 / 256)
+        name_width = level_x - name_x - fxw(6 / 256)
+        name_size = self.font_type.biggest
+        main_font = get_theme(self.client.context.scaling).widget_font
+        while (
+            name_size > 1
+            and get_font(main_font, name_size).size(name)[0] > name_width
+        ):
+            name_size -= 1
+        lab1: Any = menu.add.label(
+            title=name,
+            label_id="name",
+            font_size=name_size,
+            align=ALIGN_LEFT,
+            float=True,
+            font_color=dark_color,
+        )
+        lab1.translate(name_x, fxh(9.8 / 144))
 
         # how much XP earned since last level-up
         x = monster.experience_handler.experience_current_level

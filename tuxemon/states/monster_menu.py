@@ -7,7 +7,7 @@ from collections.abc import Callable, Generator
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from pygame import SRCALPHA
+from pygame import SRCALPHA, transform
 from pygame.font import Font
 from pygame.rect import Rect
 from pygame.surface import Surface
@@ -20,7 +20,11 @@ from tuxemon.menu.menu import Menu
 from tuxemon.monster.filter import MonsterFilter
 from tuxemon.monster.monster import Monster
 from tuxemon.monster.renderer import MonsterRenderer
-from tuxemon.platform.const.graphics import BG_MONSTERS, TRANSPARENT_COLOR
+from tuxemon.platform.const.graphics import (
+    BG_MONSTERS,
+    FONT_COLOR,
+    TRANSPARENT_COLOR,
+)
 from tuxemon.platform.const.sizes import PARTY_LIMIT
 from tuxemon.session import local_session
 from tuxemon.sprite import Sprite
@@ -32,6 +36,7 @@ from tuxemon.ui.menu_options import (
     create_yes_no_options,
 )
 from tuxemon.ui.text import TextArea, draw_text
+from tuxemon.ui.text_renderer import TextRenderer
 
 if TYPE_CHECKING:
     from tuxemon.base_client import BaseClient
@@ -639,6 +644,7 @@ class MonsterSlotRenderer:
         self.hp_bar = hp_bar
         self.font_color = font_color
         self.slot_border = MonsterSlotBorder()
+        self.name_renderer = TextRenderer(self.scaling, FONT_COLOR, font=font)
 
     def render_slot(
         self,
@@ -658,18 +664,31 @@ class MonsterSlotRenderer:
 
         padding = self.scaling.scale_int(6)
         content = rect.inflate(-padding, -padding)
-
         upper_label = f"{monster.name}{monster.gender_symbol}"
-
-        text_rect = rect.inflate(-padding, -padding)
-        draw_text(
-            surface,
-            upper_label,
-            text_rect,
-            scaling=self.scaling,
-            font=self.font,
+        name_image = self.name_renderer.shadow_text(upper_label)
+        gap = self.scaling.scale_int(2)
+        hp_width = min(
+            int(content.width * 0.35),
+            max(
+                int(content.width * 0.25),
+                content.width - name_image.get_width() - gap,
+            ),
         )
+        hp_rect = Rect(0, 0, hp_width, self.scaling.scale_int(8))
+        hp_rect.midright = content.midright
+        name_right = hp_rect.left
+        if monster.held_item or any(
+            status.icon for status in monster.status.get_statuses()
+        ):
+            name_right = min(name_right, rect.left + int(rect.width * 0.45))
+        name_width = max(1, name_right - content.left - gap)
+        if name_image.get_width() > name_width:
+            name_image = transform.scale_by(
+                name_image, name_width / name_image.get_width()
+            )
+        surface.blit(name_image, content.topleft)
 
+        text_rect = content.copy()
         text_rect.top = rect.bottom - self.scaling.scale_int(7)
         bottom_label = f"  Lv {monster.level}"
         draw_text(
@@ -679,11 +698,6 @@ class MonsterSlotRenderer:
             scaling=self.scaling,
             font=self.font,
         )
-
-        hp_width = int(content.width * 0.35)
-        hp_rect = Rect(0, 0, hp_width, self.scaling.scale_int(8))
-        hp_rect.right = content.right
-        hp_rect.centery = content.centery
 
         self.hp_bar.value = monster.hp_ratio
         self.hp_bar.draw(surface, hp_rect)

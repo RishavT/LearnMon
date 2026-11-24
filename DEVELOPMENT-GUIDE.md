@@ -9,6 +9,7 @@ Keep this guide current when playtests, implementation, or releases establish a 
 - Keep the case objective, evidence, and next choice in the battle. Show a full stack trace or request and response together. Explain an outcome through the evidence that changed when the player acted.
 - Give each move a recognizable effect. A scan uncovers a log, a request travels and returns, and a patch changes the line it acts on. Keep effects short enough to support turn rhythm.
 - Keep recoverable mistakes meaningful. For example, a premature retry can create a simulated duplicate order, and a wrong diagnosis still leaves the original clues available.
+- Keep a captured problem’s name visible from the wild encounter through the Backpack, party, and save/load. When a case uses a contextual technique name, show how it relates to the technique the companion learned.
 
 ## Review and release
 

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Generic, TypeVar
 from uuid import UUID, uuid4
 
 from tuxemon.celestial_handler import CelestialHandler
+from tuxemon.debugging.names import migrate_problem_names
 from tuxemon.save_system import save
 from tuxemon.save_system.save_state import (
     TIME_FORMAT,
@@ -164,7 +165,8 @@ class Session(AbstractSession["BaseClient"]):
         """
         Loads the player, world, and other session-level states from a saved game model.
         """
-        self.player.set_state(self, save_data.npc_state or NPCState())
+        player_state = migrate_problem_names(save_data.npc_state or NPCState())
+        self.player.set_state(self, player_state)
         self.world.set_state(self, save_data.world_state or WorldSave())
         self.set_state(save_data.session_state or SessionSave())
         self.client.shop_manager.load_from_dict(save_data.shop_stock)
